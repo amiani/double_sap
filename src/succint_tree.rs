@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 
-use bitintr::{Tzcnt, Rbit, Bzhi};
+use bitintr::{Tzcnt, Bzhi};
 pub struct SuccintTree {
 	levels: Vec<Vec<u64>>,
 }
@@ -28,7 +28,7 @@ impl SuccintTree {
 		let word_index = index / 64;
 		let bit_index = index % 64;
 		let word = &mut self.levels[level][word_index];
-		*word |= 1 << bit_index
+		*word |= 1 << bit_index;
 	}
 
 	pub fn remove(&mut self, index: usize) {
@@ -53,12 +53,13 @@ impl SuccintTree {
 
 	pub fn range(&self, lower: usize, upper: usize) -> Vec<usize> {
 		let mut elements = Vec::<usize>::new();
-		let x = lower;
-		while let Some(x) = self.find_successor(x) {
-			if x < upper {
-				elements.push(x);
+		let mut x = lower;
+		while let Some(successor) = self.find_successor(x) {
+			if x >= upper {
 				break;
 			}
+			elements.push(successor);
+			x = successor;
 		}
 		elements
 	}
@@ -94,7 +95,14 @@ impl SuccintTree {
 	}
 
 	fn get_least_descendant(&self, level: usize, level_index: usize) -> usize {
-		4
+		if level == 0 {
+			return level_index;
+		}
+		let word_index = level_index;
+		let word = self.levels[level-1][word_index];
+		let zeros = word.tzcnt() as usize;
+		let next_level_index = level_index * 64 + zeros;
+		self.get_least_descendant(level - 1, next_level_index)
 	}
 }
 
@@ -151,7 +159,7 @@ mod tests {
 	}
 
 	#[test]
-	fn it_finds_the_range() {
+	fn it_finds_the_range_when_all_in_same_word() {
 		let mut tree = SuccintTree::new(100);
 		let range = vec![4, 23, 28, 37, 60];
 		for &x in &range {
@@ -160,6 +168,19 @@ mod tests {
 
 		let result = tree.range(3, 62);
 
-		assert_eq!(range, result);
+		assert_eq!(result, range);
+	}
+
+	#[test]
+	fn it_finds_the_range_when_in_different_words() {
+		let mut tree = SuccintTree::new(262_145);
+		let range = vec![4, 65, 4097, 262_145];
+		for &x in &range {
+			tree.insert(x);
+		}
+
+		let result = tree.range(3, 262_146);
+
+		assert_eq!(result, range);
 	}
 }
