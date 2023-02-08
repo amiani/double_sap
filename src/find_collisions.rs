@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 use crate::succint_tree::{Set, SuccintTree};
 
 pub trait Aabb {
@@ -23,7 +24,7 @@ impl<Coord: Copy> Endpoints<Coord> {
 	}
 }
 
-pub fn sweep_and_prune<'a, T: Aabb>(boxes: &[&'a T]) -> Vec<(&'a T, &'a T)> {
+pub fn sweep_and_prune<'a, A: Aabb>(boxes: &[&'a A]) -> Vec<(&'a A, &'a A)> {
 	let extents_x: Vec<(_, _)> = boxes.iter()
 		.map(|b| b.project_x())
 		.collect();
@@ -36,9 +37,13 @@ pub fn sweep_and_prune<'a, T: Aabb>(boxes: &[&'a T]) -> Vec<(&'a T, &'a T)> {
 		.collect();
 	let endpoints_y = Endpoints::new(&extents_y);
 	let sorted_y = endpoints_y.sort();
-	let colliding_pairs = find_collisions(sorted_x, boundaries_x);
-	//turn these pairs of indexes into pairs of &T
+	let colliding_pairs = find_collisions(&sorted_y, &boundaries_x);
+	colliding_pairs.iter()
+		.map(|pair| (boxes[pair.0], boxes[pair.1]))
+		.collect()
 }
+
+//fn unzip_extents
 
 struct Boundaries {
 	lower: Vec<usize>,
@@ -70,7 +75,7 @@ fn find_boundaries(indexes: &[usize]) -> Boundaries {
 			boundaries.rank_inv[rank] = box_id;
 			let box_rank = rank;
 			active_boxes.insert(box_rank);
-			boundaries.lower[box_id] = active_boxes.min();
+			boundaries.lower[box_id] = active_boxes.min().unwrap();	//TODO: remove this unwrap?
 			rank += 1;
 		} else {
 			let box_id = index - num_boxes;
@@ -80,6 +85,10 @@ fn find_boundaries(indexes: &[usize]) -> Boundaries {
 		}
 	}
 	boundaries
+}
+
+fn find_collisions(sorted_indexes: &[usize], boundaries: &Boundaries) -> Vec<(usize, usize)> {
+	unimplemented!()
 }
 
 #[cfg(test)]
