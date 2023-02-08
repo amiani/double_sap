@@ -36,8 +36,13 @@ pub trait SuccintTree: Sized {
 		elements
 	}
 
-	fn min(&self) -> usize {
-		unimplemented!();
+	fn min(&self) -> Option<usize> {
+		let final_level = self.get_levels().last().unwrap();
+		let word = final_level[0];
+		if word & 0b1 == 1 {
+			return Some(0);
+		}
+		find_successor(self, 0)
 	}
 
 }
@@ -231,5 +236,23 @@ mod tests {
 		let result = tree.range(3, 262_146);
 
 		assert_eq!(result, range);
+	}
+
+	#[test]
+	fn it_finds_the_min_zero() {
+		let mut set = Set::new(65);
+		set.insert(0);
+		set.insert(1);
+		set.insert(64);
+		set.insert(65);
+		assert_eq!(set.min().unwrap(), 0);
+	}
+
+	#[test]
+	fn it_finds_the_min_in_second_word() {
+		let mut set = Set::new(65);
+		set.insert(65);
+		set.insert(79);
+		assert_eq!(set.min().unwrap(), 65);
 	}
 }
