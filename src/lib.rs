@@ -1,7 +1,7 @@
 #![warn(clippy::all, clippy::pedantic)]
 
 mod succint_tree;
-mod find_collisions;
+mod sweep_and_prune;
 mod radix_sort;
 
 #[cfg(test)]
