@@ -3,9 +3,9 @@ use crate::succint_tree::{Set, SuccintTree};
 
 pub trait Aabb {
 	type Coord: Copy;
-	fn project_x(&self) -> (&Self::Coord, &Self::Coord);
-	fn project_y(&self) -> (&Self::Coord, &Self::Coord);
-	fn project_z(&self) -> (&Self::Coord, &Self::Coord);
+	fn project_x(&self) -> (Self::Coord, Self::Coord);
+	fn project_y(&self) -> (Self::Coord, Self::Coord);
+	fn project_z(&self) -> (Self::Coord, Self::Coord);
 }
 
 //TODO: remove this type in favour of plain functions?
@@ -24,7 +24,7 @@ impl<Coord: Copy> Endpoints<Coord> {
 	}
 }
 
-pub fn sweep_and_prune<'a, A: Aabb>(boxes: &[&'a A]) -> Vec<(&'a A, &'a A)> {
+pub fn sweep_and_prune<A: Aabb>(boxes: &[A]) -> Vec<(&A, &A)> {
 	let extents_x: Vec<(_, _)> = boxes.iter()
 		.map(|b| b.project_x())
 		.collect();
@@ -39,7 +39,7 @@ pub fn sweep_and_prune<'a, A: Aabb>(boxes: &[&'a A]) -> Vec<(&'a A, &'a A)> {
 	let sorted_y = endpoints_y.sort();
 	let colliding_pairs = find_collisions(&sorted_y, &boundaries_x);
 	colliding_pairs.iter()
-		.map(|pair| (boxes[pair.0], boxes[pair.1]))
+		.map(|pair| (&boxes[pair.0], &boxes[pair.1]))
 		.collect()
 }
 
@@ -94,6 +94,47 @@ fn find_collisions(sorted_indexes: &[usize], boundaries: &Boundaries) -> Vec<(us
 #[cfg(test)]
 mod tests {
 	use super::*;
+	
+	struct BoundingBox {
+		position: (f64, f64, f64),
+		width: f64,
+		length: f64,
+		height: f64
+	}
 
+	impl Aabb for BoundingBox {
+		type Coord = f64;
+		fn project_x(&self) -> (Self::Coord, Self::Coord) {
+			(self.position.0, self.position.0 + self.width)
+		}
+		fn project_y(&self) -> (Self::Coord, Self::Coord) {
+			(self.position.1, self.position.1 + self.length)
+		}
+		fn project_z(&self) -> (Self::Coord, Self::Coord) {
+			(self.position.2, self.position.2 + self.height)
+		}
+	}
 
+	#[test]
+	fn it_finds_two_colliding_boxes() {
+		let boxes = [
+			BoundingBox {
+				position: (1.0, 2.0, 0.0),
+				width: 1.0,
+				length: 1.0,
+				height: 1.0,
+			},
+			BoundingBox {
+				position: (1.5, 2.5, 0.0),
+				width: 1.0,
+				length: 1.0,
+				height: 1.0,
+			},
+		];
+
+		let colliding_pairs = sweep_and_prune(&boxes);
+
+		assert!(std::ptr::eq(&boxes[0], colliding_pairs[0].0));
+		assert!(std::ptr::eq(&boxes[1], colliding_pairs[0].1));
+	}
 }
