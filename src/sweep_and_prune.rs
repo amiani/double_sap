@@ -1,49 +1,37 @@
 #![allow(dead_code)]
-use crate::succint_tree::{Set, SuccintTree};
+use crate::{succint_tree::{Set, SuccintTree}, radix_sort::RadixSort};
+
+type Real = f64;
 
 pub trait Aabb {
-	type Coord: Copy;
-	fn project_x(&self) -> (Self::Coord, Self::Coord);
-	fn project_y(&self) -> (Self::Coord, Self::Coord);
-	fn project_z(&self) -> (Self::Coord, Self::Coord);
-}
-
-//TODO: remove this type in favour of plain functions?
-struct Endpoints<Coord>(Vec<Coord>)
-	where
-		Coord: Copy;
-
-impl<Coord: Copy> Endpoints<Coord> {
-	pub fn new(extents: &[(Coord, Coord)]) -> Self {
-		let (left, right): (Vec<_>, Vec<_>) = extents.iter().copied().unzip();
-		Self([left, right].concat())
-	}
-
-	pub fn sort(&self) -> Vec<usize> {
-		unimplemented!()
-	}
+	fn project_x(&self) -> (Real, Real);
+	fn project_y(&self) -> (Real, Real);
+	fn project_z(&self) -> (Real, Real);
 }
 
 pub fn sweep_and_prune<A: Aabb>(boxes: &[A]) -> Vec<(&A, &A)> {
 	let extents_x: Vec<(_, _)> = boxes.iter()
-		.map(|b| b.project_x())
+		.map(Aabb::project_x)
 		.collect();
-	let endpoints_x = Endpoints::new(&extents_x);
-	let sorted_x = endpoints_x.sort();
+	let endpoints_x = unzip_extents(&extents_x);
+	let sorted_x = endpoints_x.as_slice().argsort();
 	let boundaries_x = find_boundaries(&sorted_x);
 
 	let extents_y: Vec<(_, _)> = boxes.iter()
-		.map(|b| b.project_y())
+		.map(Aabb::project_y)
 		.collect();
-	let endpoints_y = Endpoints::new(&extents_y);
-	let sorted_y = endpoints_y.sort();
+	let endpoints_y = unzip_extents(&extents_y);
+	let sorted_y = endpoints_y.as_slice().argsort();
 	let colliding_pairs = find_collisions(&sorted_y, &boundaries_x);
 	colliding_pairs.iter()
 		.map(|pair| (&boxes[pair.0], &boxes[pair.1]))
 		.collect()
 }
 
-//fn unzip_extents
+fn unzip_extents(extents: &[(Real, Real)]) -> Vec<Real> {
+	let (left, right): (Vec<_>, Vec<_>) = extents.iter().copied().unzip();
+	[left, right].concat()
+}
 
 struct Boundaries {
 	lower: Vec<usize>,
@@ -103,14 +91,13 @@ mod tests {
 	}
 
 	impl Aabb for BoundingBox {
-		type Coord = f64;
-		fn project_x(&self) -> (Self::Coord, Self::Coord) {
+		fn project_x(&self) -> (f64, f64) {
 			(self.position.0, self.position.0 + self.width)
 		}
-		fn project_y(&self) -> (Self::Coord, Self::Coord) {
+		fn project_y(&self) -> (f64, f64) {
 			(self.position.1, self.position.1 + self.length)
 		}
-		fn project_z(&self) -> (Self::Coord, Self::Coord) {
+		fn project_z(&self) -> (f64, f64) {
 			(self.position.2, self.position.2 + self.height)
 		}
 	}
