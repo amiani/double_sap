@@ -25,6 +25,9 @@ pub trait SuccintTree: Sized {
 
 	fn range(&self, lower: usize, upper: usize) -> Vec<usize> {
 		let mut elements = Vec::<usize>::new();
+		if self.contains(lower) {
+			elements.push(lower);
+		}
 		let mut x = lower;
 		while let Some(successor) = find_successor(self, x) {
 			if x >= upper {
@@ -43,6 +46,12 @@ pub trait SuccintTree: Sized {
 			return Some(0);
 		}
 		find_successor(self, 0)
+	}
+
+	fn contains(&self, x: usize) -> bool {
+		let bit_index = x % 64;
+		let word = self.get_levels()[0][x / 64];
+		word & 1 << bit_index != 0
 	}
 
 }
@@ -236,6 +245,19 @@ mod tests {
 		let result = tree.range(3, 262_146);
 
 		assert_eq!(result, range);
+	}
+
+	#[test]
+	fn range_includes_the_lower_bound() {
+		let mut tree = Set::new(64);
+		let range = vec![4, 7, 15, 34];
+		for &x in &range {
+			tree.insert(x);
+		}
+
+		let result = tree.range(range[0], 26);
+
+		assert_eq!(result[0], range[0]);
 	}
 
 	#[test]
