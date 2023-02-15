@@ -9,6 +9,13 @@ impl RadixSort for &[f64] {
     }
 }
 
+impl RadixSort for Vec<f64> {
+    fn argsort(&self) -> Vec<usize> {
+        let flipped: Vec<u64> = self.iter().map(|&f| flip_float(f)).collect();
+        argsort(&flipped)
+    }
+}
+
 fn sort_in_place(arr: &mut [u64]) {
     for i in 0..8 {
         let radix_of = |x| (x as usize >> (i << 3)) & 0xff;

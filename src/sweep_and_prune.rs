@@ -13,19 +13,14 @@ pub fn sweep_and_prune<A: Aabb>(boxes: &[A]) -> Vec<(&A, &A)> {
 	let extents_x: Vec<(_, _)> = boxes.iter()
 		.map(Aabb::project_x)
 		.collect();
-	let endpoints_x = unzip_extents(&extents_x);
-	let sorted_x = endpoints_x.as_slice().argsort();
-	let boundaries_x = find_boundaries(&sorted_x);
+	let sorted_indexes_x = unzip_extents(&extents_x).argsort();
+	let boundaries_x = find_boundaries(&sorted_indexes_x);
 
 	let extents_y: Vec<(_, _)> = boxes.iter()
 		.map(Aabb::project_y)
 		.collect();
-	let endpoints_y = unzip_extents(&extents_y);
-	let sorted_y = endpoints_y.as_slice().argsort();
-	let colliding_pairs = find_collisions(&sorted_y, &boundaries_x);
-	colliding_pairs.iter()
-		.map(|pair| (&boxes[pair.0], &boxes[pair.1]))
-		.collect()
+	let sorted_indexes_y = unzip_extents(&extents_y).argsort();
+	find_pairs(&sorted_indexes_y, &boundaries_x, boxes)
 }
 
 fn unzip_extents(extents: &[(Real, Real)]) -> Vec<Real> {
@@ -33,50 +28,77 @@ fn unzip_extents(extents: &[(Real, Real)]) -> Vec<Real> {
 	[left, right].concat()
 }
 
-struct Boundaries {
+struct CandidateBounds {
 	lower: Vec<usize>,
 	upper: Vec<usize>,
-	rank: Vec<usize>,
-	rank_inv: Vec<usize>
+	ranks: Vec<usize>,
+	ranks_inv: Vec<usize>
 }
 
-impl Boundaries {
+impl CandidateBounds {
 	pub fn new(len: usize) -> Self {
 		Self {
 			lower: vec![0usize; len],
 			upper: vec![0usize; len],
-			rank: vec![0usize; len],
-			rank_inv: vec![0usize; len],
+			ranks: vec![0usize; len],
+			ranks_inv: vec![0usize; len],
 		}
 	}
 }
 
-fn find_boundaries(indexes: &[usize]) -> Boundaries {
+fn find_boundaries(indexes: &[usize]) -> CandidateBounds {
 	let num_boxes = indexes.len() / 2;
 	let mut active_boxes = Set::new(num_boxes as u32);
 	let mut rank = 0;
-	let mut boundaries = Boundaries::new(num_boxes);
+	let mut bounds = CandidateBounds::new(num_boxes);
 	for &index in indexes {
 		if index < num_boxes {
 			let box_id = index;
-			boundaries.rank[box_id] = rank;
-			boundaries.rank_inv[rank] = box_id;
+			bounds.ranks[box_id] = rank;
+			bounds.ranks_inv[rank] = box_id;
 			let box_rank = rank;
 			active_boxes.insert(box_rank);
-			boundaries.lower[box_id] = active_boxes.min().unwrap();	//TODO: remove this unwrap?
+			bounds.lower[box_id] = active_boxes.min().unwrap();	//TODO: remove this unwrap?
 			rank += 1;
 		} else {
 			let box_id = index - num_boxes;
-			boundaries.upper[box_id] = rank;
-			let box_rank = boundaries.rank[box_id];
+			bounds.upper[box_id] = rank;
+			let box_rank = bounds.ranks[box_id];
 			active_boxes.remove(box_rank);
 		}
 	}
-	boundaries
+	bounds
 }
 
-fn find_collisions(sorted_indexes: &[usize], boundaries: &Boundaries) -> Vec<(usize, usize)> {
-	unimplemented!()
+fn find_pairs<'a, A: Aabb>(sorted_indexes: &[usize], bounds: &CandidateBounds, boxes: &'a [A]) -> Vec<(&'a A, &'a A)> {
+	let num_boxes = sorted_indexes.len() / 2;
+	let mut active_ranks = Set::new(num_boxes as u32);
+	let mut pairs = Vec::<(&A, &A)>::new();
+	for &index in sorted_indexes {
+		if index < num_boxes {
+			let object = &boxes[index];
+			let are_colliding = |right: &&A| {
+				let left_extent = object.project_z();
+				let right_extent = right.project_z();
+				left_extent.1 > right_extent.0 && left_extent.0 < right_extent.1
+			};
+
+			let candidates = active_ranks.range(bounds.lower[index], bounds.upper[index]);
+			let colliding_objects = candidates.iter()
+				.map(|&c| bounds.ranks_inv[c])
+				.map(|index| &boxes[index])
+				.filter(are_colliding)
+				.map(|colliding_object| (object, colliding_object));
+			pairs.extend(colliding_objects);
+
+			let rank = bounds.ranks[index];
+			active_ranks.insert(rank);
+		} else {
+			let rank = bounds.ranks[index - num_boxes];
+			active_ranks.remove(rank);
+		}
+	}
+	pairs
 }
 
 #[cfg(test)]
@@ -121,7 +143,7 @@ mod tests {
 
 		let colliding_pairs = sweep_and_prune(&boxes);
 
-		assert!(std::ptr::eq(&boxes[0], colliding_pairs[0].0));
-		assert!(std::ptr::eq(&boxes[1], colliding_pairs[0].1));
+		assert!(std::ptr::eq(&boxes[0], colliding_pairs[0].1));
+		assert!(std::ptr::eq(&boxes[1], colliding_pairs[0].0));
 	}
 }
