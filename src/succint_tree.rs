@@ -255,4 +255,14 @@ mod tests {
 		set.insert(79);
 		assert_eq!(set.min().unwrap(), 65);
 	}
+
+	#[test]
+	fn next_sibling_finds_that_the_sibling_of_0_is_1() {
+		assert_eq!(next_sibling(3, 0).unwrap(), 1);
+	}
+
+	#[test]
+	fn next_sibling_finds_that_the_sibling_of_1_is_2() {
+		assert_eq!(next_sibling(7, 1).unwrap(), 2);
+	}
 }
