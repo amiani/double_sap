@@ -2,7 +2,7 @@
 
 use bitintr::{Tzcnt, Bzhi};
 
-pub trait SuccintTree: Sized {
+pub trait SuccinctTree: Sized {
 	fn get_levels(&self) -> &Vec<Vec<u64>>;
 	fn get_levels_mut(&mut self) -> &mut Vec<Vec<u64>>;
 
@@ -60,14 +60,14 @@ fn calc_level_index(level: u32, index: usize) -> usize {
 	index / 64usize.pow(level as u32)
 }
 
-fn set<T: SuccintTree>(tree: &mut T, level: usize, index: usize) {
+fn set<T: SuccinctTree>(tree: &mut T, level: usize, index: usize) {
 	let word_index = index / 64;
 	let bit_index = index % 64;
 	let word = &mut tree.get_levels_mut()[level][word_index];
 	*word |= 1 << bit_index;
 }
 
-fn unset<T: SuccintTree>(tree: &mut T, level: usize, index: usize) -> u64 {
+fn unset<T: SuccinctTree>(tree: &mut T, level: usize, index: usize) -> u64 {
 	let word_index = index / 64;
 	let bit_index = index % 64;
 	let word = &mut tree.get_levels_mut()[level][word_index];
@@ -75,12 +75,12 @@ fn unset<T: SuccintTree>(tree: &mut T, level: usize, index: usize) -> u64 {
 	*word
 }
 
-fn find_successor<T: SuccintTree>(tree: &T, x: usize) -> Option<usize> {
+fn find_successor<T: SuccinctTree>(tree: &T, x: usize) -> Option<usize> {
 	let (level, index) = find_ancestor_sibling(tree, x)?;
 	Some(get_least_descendant(tree, level, index))
 }
 
-fn find_ancestor_sibling<T: SuccintTree>(tree: &T, x: usize) -> Option<(usize, usize)> {
+fn find_ancestor_sibling<T: SuccinctTree>(tree: &T, x: usize) -> Option<(usize, usize)> {
 	for level in 0..tree.get_levels().len() {
 		let level_index = calc_level_index(level as u32, x);
 		let word_index = level_index / 64;
@@ -105,7 +105,7 @@ fn next_sibling(word: u64, x: u32) -> Option<usize> {
 	}
 }
 
-fn get_least_descendant<T: SuccintTree>(tree: &T, level: usize, level_index: usize) -> usize {
+fn get_least_descendant<T: SuccinctTree>(tree: &T, level: usize, level_index: usize) -> usize {
 	if level == 0 {
 		return level_index;
 	}
@@ -124,7 +124,7 @@ pub struct Set {
 	levels: Vec<Vec<u64>>,
 }
 
-impl SuccintTree for Set {
+impl SuccinctTree for Set {
 	fn new(capacity: u32) -> Self {
 		let capacity = f64::from(capacity);
 		let num_levels = std::cmp::max(1, capacity.log(64.0).ceil() as u32);
@@ -150,7 +150,7 @@ pub struct LinkedSet {
 }
 
 /*
-impl SuccintTree for LinkedSuccintSet {
+impl SuccinctTree for LinkedSuccinctSet {
 	fn new(capacity: u32) -> Self {
 		let capacity = f64::from(capacity);
 		let num_levels = capacity.log(64.0).ceil() as u32;

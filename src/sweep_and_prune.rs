@@ -1,5 +1,5 @@
 #![allow(dead_code)]
-use crate::{succint_tree::{Set, SuccintTree}, radix_sort::RadixSort};
+use crate::{succinct_tree::{Set, SuccinctTree}, radix_sort::RadixSort};
 
 type Real = f64;
 
