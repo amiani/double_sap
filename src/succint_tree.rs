@@ -120,7 +120,6 @@ fn div_up(a: usize, b: usize) -> usize {
     a / b + (a % b != 0) as usize
 }
 
-
 pub struct Set {
 	levels: Vec<Vec<u64>>,
 }
@@ -128,7 +127,7 @@ pub struct Set {
 impl SuccintTree for Set {
 	fn new(capacity: u32) -> Self {
 		let capacity = f64::from(capacity);
-		let num_levels = capacity.log(64.0).ceil() as u32;
+		let num_levels = std::cmp::max(1, capacity.log(64.0).ceil() as u32);
 		let n = 64usize.pow(num_levels);
 		Self {
 			levels: (0..num_levels)
