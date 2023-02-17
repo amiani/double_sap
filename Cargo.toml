@@ -7,3 +7,6 @@ edition = "2021"
 
 [dependencies]
 bitintr = "0.3"
+
+[features]
+f32 = []

@@ -1,7 +1,10 @@
 #![allow(dead_code)]
 use crate::{succinct_tree::{Set, SuccinctTree}, radix_sort::RadixSort};
 
+#[cfg(not(feature = "f32"))]
 type Real = f64;
+#[cfg(feature = "f32")]
+type Real = f32;
 
 pub trait Volume {
 	fn project_x(&self) -> (Real, Real);
@@ -10,6 +13,7 @@ pub trait Volume {
 }
 
 /// Finds collisions between bounding volumes
+/// 
 /// 
 pub fn sweep_and_prune<V: Volume>(volumes: &[V]) -> Vec<(&V, &V)> {
 	let extents_x: Vec<(_, _)> = volumes.iter()
