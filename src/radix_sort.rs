@@ -4,15 +4,22 @@ pub trait RadixSort {
 
 impl RadixSort for &[f64] {
     fn argsort(&self) -> Vec<usize> {
-        let flipped: Vec<u64> = self.iter().map(|&f| flip_float(f)).collect();
-        argsort(&flipped)
+        let flipped: Vec<u64> = self.iter().map(f64::flip).collect();
+        argsort(&flipped, 64)
     }
 }
 
 impl RadixSort for Vec<f64> {
     fn argsort(&self) -> Vec<usize> {
-        let flipped: Vec<u64> = self.iter().map(|&f| flip_float(f)).collect();
-        argsort(&flipped)
+        let flipped: Vec<u64> = self.iter().map(f64::flip).collect();
+        argsort(&flipped, 64)
+    }
+}
+
+impl RadixSort for &[f32] {
+    fn argsort(&self) -> Vec<usize> {
+        let flipped: Vec<u32> = self.iter().map(f32::flip).collect();
+        argsort(&flipped, 32)
     }
 }
 
@@ -37,10 +44,17 @@ fn sort_in_place(arr: &mut [u64]) {
     }
 }
 
-fn argsort(arr: &[u64]) -> Vec<usize> {
+fn argsort<Unsigned>(arr: &[Unsigned], size: usize) -> Vec<usize>
+    where
+        Unsigned: TryInto<usize> + Copy,
+        <Unsigned as TryInto<usize>>::Error: std::fmt::Debug,
+{
     let mut indexes: Vec<usize> = (0..arr.len()).collect();
-    for place in 0..8 {
-        let radix_of = |x| (x as usize >> (place << 3)) & 0xff;
+    for place in 0..size/8 {
+        let radix_of = |x: Unsigned| {
+            let x: usize = x.try_into().unwrap();
+            (x >> (place << 3)) & 0xff
+        };
         // Count digit occurrences
         let mut counters = vec![0; 256];
         for &index in &indexes {
@@ -62,16 +76,40 @@ fn argsort(arr: &[u64]) -> Vec<usize> {
     indexes
 }
 
-fn flip_float(x: f64) -> u64 {
-    let bits = x.to_bits();
-    let mask = -((bits >> 63) as i64) as u64 | 0x8000000000000000;
-    bits ^ mask
+trait Flip {
+    type Flipped;
+    fn flip(&self) -> Self::Flipped;
+    fn unflip(flipped_bits: &Self::Flipped) -> Self;
 }
 
-fn unflip_float(flipped_bits: u64) -> f64 {
-    let mask = ((flipped_bits >> 63) as i64 - 1) as u64 | 0x8000000000000000;
-    let bits = flipped_bits ^ mask;
-    f64::from_bits(bits)
+impl Flip for f64 {
+    type Flipped = u64;
+    fn flip(&self) -> u64 {
+        let bits = self.to_bits();
+        let mask = -((bits >> 63) as i64) as u64 | 0x8000_0000_0000_0000;
+        bits ^ mask
+    }
+
+    fn unflip(flipped_bits: &u64) -> Self {
+        let mask = ((flipped_bits >> 63) as i64 - 1) as u64 | 0x8000_0000_0000_0000;
+        let bits = flipped_bits ^ mask;
+        f64::from_bits(bits)
+    }
+}
+
+impl Flip for f32 {
+    type Flipped = u32;
+    fn flip(&self) -> u32 {
+        let bits = self.to_bits();
+        let mask = -((bits >> 31) as i32) as u32 | 0x8000_0000;
+        bits ^ mask
+    }
+
+    fn unflip(flipped_bits: &u32) -> Self {
+        let mask = ((flipped_bits >> 31) as i32 - 1) as u32 | 0x8000_0000;
+        let bits = flipped_bits ^ mask;
+        f32::from_bits(bits)
+    }
 }
 
 #[cfg(test)]
@@ -79,20 +117,20 @@ mod tests {
     use super::*;
 
 	#[test]
-	fn in_place_sort_sorts_3_positive_floats() {
+	fn in_place_sort_sorts_3_positive_f64s() {
 		let floats = [5.0, 3.0, 4.0];
-		let mut arr: Vec<u64> = floats.into_iter().map(flip_float).collect();
+		let mut arr: Vec<u64> = floats.iter().map(f64::flip).collect();
 		sort_in_place(&mut arr);
-		let sorted_floats: Vec<f64> = arr.into_iter().map(unflip_float).collect();
+		let sorted_floats: Vec<f64> = arr.iter().map(f64::unflip).collect();
 		assert_eq!(&sorted_floats, &[3.0, 4.0, 5.0]);
 	}
 
     #[test]
-    fn in_place_sorts_3_floats() {
+    fn in_place_sorts_3_f64s() {
 		let floats = [4.0, -5.0, -6.0];
-		let mut arr: Vec<u64> = floats.into_iter().map(flip_float).collect();
+		let mut arr: Vec<u64> = floats.iter().map(f64::flip).collect();
 		sort_in_place(&mut arr);
-		let sorted_floats: Vec<f64> = arr.into_iter().map(unflip_float).collect();
+		let sorted_floats: Vec<f64> = arr.iter().map(f64::unflip).collect();
 		assert_eq!(&sorted_floats, &[-6.0, -5.0, 4.0]);
     }
 
@@ -106,8 +144,14 @@ mod tests {
     */
 
     #[test]
-    fn argsort_sorts_3_floats() {
+    fn argsort_sorts_3_f64s() {
         let floats = [4.0, -5.0, -6.0];
+		let sorted_indexes = floats.as_slice().argsort();
+		assert_eq!(&sorted_indexes, &[2, 1, 0]);
+    }
+    #[test]
+    fn argsort_sorts_3_f32s() {
+        let floats = [4.0f32, -5.0, -6.0];
 		let sorted_indexes = floats.as_slice().argsort();
 		assert_eq!(&sorted_indexes, &[2, 1, 0]);
     }
