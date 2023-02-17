@@ -134,15 +134,6 @@ mod tests {
 		assert_eq!(&sorted_floats, &[-6.0, -5.0, 4.0]);
     }
 
-    /*
-    #[test]
-    fn argsort_sorts_3_positive_integers() {
-        let nums = [5, 3, 4];
-        let sorted_indexes = 
-        assert_eq!(sorted_indexes, vec![1, 2, 0]);
-    }
-    */
-
     #[test]
     fn argsort_sorts_3_f64s() {
         let floats = [4.0, -5.0, -6.0];
